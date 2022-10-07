@@ -116,4 +116,25 @@ for equipo in equipos:
                             
                         
                     file.save('PdcNokia-Ericsson-Samsung-HuaweiSepDALIA2022v1.0.xlsx') 
+                   
+ for comando in comandos:
+    output= net_connect.send_command(comando)
+    #print(output)
+    archivo= open("CISCO_general.txt","a")
+    archivo.write("============="+ comando +  "================")
+    archivo.write(output) 
+    archivo.write("\n")
+    archivo.write("-"*100)
+    archivo.write("\n")
+    archivo= open("CISCO_general.csv","w")
+archivo.close()
+
+abrir= open("CISCO_general.txt", "r")
+for line in abrir.readlines():
+        lista_sin_espacio= line.split()
+        texto_con_comas= ",".join(lista_sin_espacio)
+        archivo_csv= open("CISCO_general.csv","a")
+        archivo_csv.write(texto_con_comas + "\n")
+        archivo_csv.close()
+archivo.close()
                                 
