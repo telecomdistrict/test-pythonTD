@@ -1,0 +1,119 @@
+from operator import index
+from netmiko import ConnectHandler
+import pandas as pd
+from pandas import ExcelWriter
+import datetime
+import openpyxl
+from openpyxl import load_workbook
+
+
+#equipos=[{ 'device_type':'nokia_sros', 'ip':'192.168.122.100', 'username':'admin', 'password':'admin', 'port':22}]
+equipos=[{ 'device_type':'cisco_xr', 'ip': 'sandbox-iosxr-1.cisco.com', 'username':'admin', 'password':'C1sco12345', 'port':22}]
+
+comandos= [ #"sh bgp vrf TEF_LTE summ | inc \"64802|7438|Neighbor\"", 
+            #"sh bgp vrf TEF_3G_IuR summ | inc \"64802|7438|Neighbor\"",
+            #"sh bgp vrf TEF_3G_IuB summ | inc \"64802|7438|Neighbor\"",
+            #"sh bgp vrf TEF_3G_Voice summ | inc \"64802|7438|Neighbor\"",
+            #"sh bgp vrf TEF_3G_Control summ | inc \"64802|7438|Neighbor\""
+            #"sh bgp vrf TEF_3G_OAM summ | inc \"64802|7438|Neighbor\"",
+            #"sh bgp vrf TEF_3G_Data summ | inc \"64802|7438|Neighbor\"",
+            #"show bgp sessions",
+            #"show bfd session",
+            #"show bundle brief",
+            "show ip interface brief",
+            #"show int Bundle-Ether2000",
+            #"show interface TenGigE0/2/0/0",
+            #"show processes cpu",
+            "show processes memory",
+
+           ]
+
+for equipo in equipos:
+  print('Connection to device {}'.format(equipo['ip']))
+  net_connect = ConnectHandler(**equipo)
+ 
+
+  for comando in comandos:
+        output= net_connect.send_command(comando)
+        archivo= open("ITERADOR.txt","w")  ### se crea un archico txt que contendra la información de cada comando -- uno a uno
+        archivo.write(output) ### se le pasa la información al archivo
+        archivo.close()
+        ############# se ingresa al archivo txt para eliminar la primer línea y poder ingresar a los encabezados del df de forma adecuada
+        
+        with open("ITERADOR.txt", 'r+') as fp:
+                    lines = fp.readlines()
+                    fp.seek(0)
+                    fp.truncate()
+                    for number, line in enumerate(lines):
+                        if number not in [0,1]:
+                            fp.write(line)
+
+        #########Se crea un csv el cual sirve para la conversión de cadena de texto a df, 
+        # primero se lee el txt que contiene la infromación de el comando actual, se separa por comas dicha informacion 
+        # y se envía al csv
+
+        archivo= open("CONVERSION.csv","w")
+        archivo.close()
+            
+        abrir= open("ITERADOR.txt", "r")
+        for line in abrir.readlines():
+                                lista_sin_espacio= line.split()
+                                texto_con_comas= ",".join(lista_sin_espacio)
+                                archivo_csv= open("CONVERSION.csv","a")
+                                archivo_csv.write(texto_con_comas + "\n")
+                                archivo_csv.close()
+        archivo.close()
+
+        ###se extrae la información del csv como un df
+
+        df=pd.read_csv("CONVERSION.csv")
+
+        
+        if comando== "show ip interface brief":
+                    ip_df=df['IP-Address'] ##### se crea un sub-df que contenga la información deseada, para ello basta con nombrar el encabezado corresponidente a la columna de la info.
+                    # como se desea escribir sobre un xlsx ya creado entonces se ingresa el con 
+                    # ayuda del modulo openpyxl
+
+                    file= load_workbook('PdcNokia-Ericsson-Samsung-HuaweiSepDALIA2022v1.0.xlsx')
+                    #ingresamos a la hoja del xlsx en la que deseamos escribir
+                    hoja= file['Routes']
+
+                    i=[]
+                    for ip in ip_df:
+                        i.append(ip)
+
+                    row= 6 #ingresamos la fila previa a donde deseamos escribir
+                    for datos in i:
+                        
+                        for j in range(3,4): # ingresamos el rago de la columna en la que deseamos escribir en este caso escribirá en la columna 3 a partir de la fila 7
+                            info= hoja.cell(row + 1, column=j)
+                            info.value= datos
+                            row +=1     
+                    file.save('PdcNokia-Ericsson-Samsung-HuaweiSepDALIA2022v1.0.xlsx') 
+                   
+        
+        if comando== "show processes memory":
+                    ip_df=df['JID'] ##### se crea un sub-df que contenga la información deseada, para ello basta con nombrar el encabezado corresponidente a la columna de la info.
+                    # como se desea escribir sobre un xlsx ya creado entonces se ingresa el con 
+                    # ayuda del modulo openpyxl
+
+                    file= load_workbook('PdcNokia-Ericsson-Samsung-HuaweiSepDALIA2022v1.0.xlsx')
+                    #ingresamos a la hoja del xlsx en la que deseamos escribir
+                    hoja= file['General']
+
+                    i=[]
+                    for ip in ip_df:
+                        i.append(ip)
+
+                    row= 1 #ingresamos la fila previa a donde deseamos escribir
+                    for datos in i:
+                        
+                        for j in range(13,14): # ingresamos el rago de la columna en la que deseamos escribir en este caso escribirá en la columna 3 a partir de la fila 7
+                            info= hoja.cell(row + 1, column=j)
+                            info.value= datos
+                            row +=1  
+    
+                            
+                        
+                    file.save('PdcNokia-Ericsson-Samsung-HuaweiSepDALIA2022v1.0.xlsx') 
+                                
